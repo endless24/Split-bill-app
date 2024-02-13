@@ -136,14 +136,14 @@ function Friend({ friend, onSelectedfriend, selectedFriend }) {
             {friend.owe.map((fr, ind) => (
               <div key={ind}>
                 {fr.balance > 0 && (
-                  <p>
+                  <div>
                     <div
                       className="red "
                       style={{ width: "320px", padding: "3px 0" }}
                     >
                       you owe {fr.name} ${fr.balance}
                     </div>
-                  </p>
+                  </div>
                 )}
               </div>
             ))}
@@ -231,54 +231,62 @@ function FormSplitBill({ friends, upDateFriendInfo }) {
       return;
     }
 
-    const figure = bill / (filteredUsers[0].owe.length + 1);
-    const eachAmountToPay = parseFloat(figure.toFixed(2));
-    const holdFriends = [];
-    friends.forEach((element) => {
-      if (element.id === parseInt(whoIsPaying)) {
-        const holdingOweArray = [];
-        element.owe.forEach((owelist) => {
-          if (owelist.balance > 0) {
-            const clearedBalance = owelist.balance - eachAmountToPay;
-            if (clearedBalance > 0) {
-              owelist.balance = clearedBalance;
-            } else {
-              owelist.balance = 0;
-            }
-            holdingOweArray.push(owelist);
-          } else {
-            holdingOweArray.push(owelist);
-          }
-          element.owe = holdingOweArray;
-        });
-        holdFriends.push(element);
-      } else {
-        const newPay = [];
-        const owingAmount = filteredUsers[0].owe.filter(
-          (x) => x.id === parseInt(element.id)
-        );
-
-        element.owe.forEach((el) => {
-          if (el.id === parseInt(whoIsPaying)) {
-            const cleared = eachAmountToPay - owingAmount[0].balance;
-            console.log(cleared);
-            el.balance = cleared;
-            newPay.push(el);
-          } else {
-            newPay.push(el);
-          }
-        });
-        element.owe = newPay;
-        holdFriends.push(element);
-      }
-    });
-    upDateFriendInfo(holdFriends);
-    // console.log(holdFriends);
-
     if (isNaN(bill) || bill <= 0) {
       alert("Please enter a valid bill amount.");
       return;
     }
+    // Calculate the amount each person needs to pay
+    const figure = bill / (filteredUsers[0].owe.length + 1);
+    // Convert the calculated amount to 2 decimal precision
+    const eachAmountToPay = parseFloat(figure.toFixed(2));
+    // Update friends' balances based on who is paying the bill
+    const updatedFriends = friends.map((friend) => {
+      // Check if the current friend is the one paying the bill
+      if (friend.id === parseInt(whoIsPaying)) {
+        // If yes, update their owed amounts
+        const updatedOwe = friend.owe.map((owe) => {
+          if (owe.balance > 0) {
+            // Deduct eachAmountToPay from the owed balance, ensuring it doesn't go negative
+            const clearedBalance = owe.balance - eachAmountToPay;
+            return { ...owe, balance: clearedBalance > 0 ? clearedBalance : 0 };
+          } else {
+            return owe;
+          }
+        });
+        // Update the friend's owed amounts
+        return { ...friend, owe: updatedOwe };
+      } else {
+        // If the friend is not the one paying the bill
+        // Find out how much they owe to the payer
+        const owingAmount = filteredUsers[0].owe.find(
+          (x) => x.id === parseInt(friend.id)
+        );
+
+        if (owingAmount) {
+          // If the friend owes to the payer, update their owed amounts
+          const updatedOwe = friend.owe.map((owe) => {
+            if (owe.id === parseInt(whoIsPaying)) {
+              // Adjust the owed amount based on the difference between eachAmountToPay and what they owe
+              const cleared = eachAmountToPay - owingAmount.balance;
+              return { ...owe, balance: owe.balance + cleared };
+            } else {
+              return owe;
+            }
+          });
+
+          return { ...friend, owe: updatedOwe };
+        } else {
+          // If the friend doesn't owe to the payer, add a new owed amount entry
+          const updatedOwe = friend.owe.concat({
+            id: parseInt(whoIsPaying),
+            balance: -eachAmountToPay,
+          });
+          return { ...friend, owe: updatedOwe };
+        }
+      }
+    });
+    // Update the friend information with the updated balances
+    upDateFriendInfo(updatedFriends);
   };
 
   return (
@@ -316,44 +324,3 @@ function FormSplitBill({ friends, upDateFriendInfo }) {
 }
 
 export default App;
-
-// const holdFriends = [];
-//     friends.forEach((element) => {
-//       if (element.id === parseInt(whoIsPaying)) {
-//         const holdingOweArray = [];
-//         element.owe.forEach((owelist) => {
-//           if (owelist.balance > 0) {
-//             const clearedBalance = owelist.balance - eachAmountToPay;
-//             if (clearedBalance > 0) {
-//               owelist.balance = clearedBalance;
-//             } else {
-//               owelist.balance = 0;
-//             }
-//             holdingOweArray.push(owelist);
-//           } else {
-//             holdingOweArray.push(owelist);
-//           }
-//           element.owe = holdingOweArray;
-//         });
-//         holdFriends.push(element);
-//       } else {
-//         const newPay = [];
-//         const owingAmount = filteredUsers[0].owe.filter(
-//           (x) => x.id === parseInt(element.id)
-//         );
-
-//         element.owe.forEach((el) => {
-//           if (el.id === parseInt(whoIsPaying)) {
-//             const cleared = eachAmountToPay - owingAmount[0].balance;
-//             console.log(cleared);
-//             el.balance = cleared;
-//             newPay.push(el);
-//           } else {
-//             newPay.push(el);
-//           }
-//         });
-//         element.owe = newPay;
-//         holdFriends.push(element);
-//       }
-//     });
-//     upDateFriendInfo(holdFriends);
